@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <title>Kay SKU Scanner</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f7f7f7;
+      background: #0d0d0f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0d0d0f;
+      color: #f7f7f7;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      width: min(100%, 720px);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: clamp(24px, 7vw, 38px);
+      line-height: 1;
+      margin: 0;
+      letter-spacing: -0.04em;
+    }
+    .sub {
+      color: #b8b8be;
+      margin: 8px 0 18px;
+      line-height: 1.45;
+    }
+    .camera-shell {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      background: #17171a;
+      min-height: 340px;
+      border: 1px solid #2a2a30;
+    }
+    video {
+      width: 100%;
+      height: min(64vh, 560px);
+      min-height: 340px;
+      display: block;
+      object-fit: cover;
+      background: #17171a;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(0,0,0,.47), rgba(0,0,0,.47)) top/100% 34% no-repeat,
+        linear-gradient(rgba(0,0,0,.47), rgba(0,0,0,.47)) bottom/100% 34% no-repeat,
+        linear-gradient(rgba(0,0,0,.47), rgba(0,0,0,.47)) left/8% 32% no-repeat,
+        linear-gradient(rgba(0,0,0,.47), rgba(0,0,0,.47)) right/8% 32% no-repeat;
+    }
+    .target {
+      width: 84%;
+      height: 32%;
+      min-height: 112px;
+      border: 3px solid #fff;
+      border-radius: 16px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 0 28px rgba(255,255,255,.14);
+      position: relative;
+    }
+    .target::before, .target::after {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      height: 1px;
+      background: rgba(255,255,255,.32);
+    }
+    .target::before { top: 33%; }
+    .target::after { top: 66%; }
+    .camera-message {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      font-size: 14px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-weight: 750;
+      min-height: 50px;
+    }
+    .btn.primary { background: #fff; color: #111; }
+    .btn.secondary { background: #26262b; color: #fff; border: 1px solid #3a3a41; }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .status {
+      margin-top: 14px;
+      border-radius: 16px;
+      padding: 15px;
+      background: #17171a;
+      border: 1px solid #2a2a30;
+    }
+    .status-label {
+      color: #a7a7ae;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-weight: 800;
+    }
+    .sku {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(30px, 10vw, 48px);
+      letter-spacing: .07em;
+      margin: 6px 0 4px;
+      font-weight: 850;
+      word-break: break-all;
+    }
+    .hint { color: #b8b8be; font-size: 14px; line-height: 1.45; }
+    .manual {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid #2a2a30;
+      border-radius: 16px;
+      background: #131315;
+    }
+    .manual h2, .history h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+    }
+    .manual-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+    input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #3a3a41;
+      background: #0b0b0d;
+      color: #fff;
+      padding: 13px 14px;
+      font-size: 20px;
+      letter-spacing: .05em;
+      outline: none;
+    }
+    input:focus { border-color: #9b9ba4; }
+    .history { margin-top: 18px; }
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .linkbtn {
+      color: #c5c5cc;
+      background: transparent;
+      border: 0;
+      text-decoration: underline;
+      padding: 6px 0;
+    }
+    .history-list {
+      display: grid;
+      gap: 8px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid #29292f;
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #141417;
+    }
+    .history-sku { font-weight: 800; letter-spacing: .05em; }
+    .history-time { color: #92929a; font-size: 12px; margin-top: 2px; }
+    .empty { color: #8f8f97; padding: 10px 0; }
+    canvas { display: none; }
+    .debug {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #8f8f97;
+      font-size: 11px;
+      max-height: 100px;
+      overflow: auto;
+      margin-top: 8px;
+      display: none;
+    }
+    @media (max-width: 460px) {
+      .controls { grid-template-columns: 1fr; }
+      .manual-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <h1>Kay SKU Scanner</h1>
+    </div>
+    <p class="sub">Point the rear camera at a printed <strong>9-digit SKU / Item #</strong>. Keep the number inside the box.</p>
+
+    <section class="camera-shell">
+      <video id="video" playsinline muted></video>
+      <div class="overlay"><div class="target"></div></div>
+      <div id="cameraMessage" class="camera-message">Tap <strong>Start camera</strong> to begin.</div>
+    </section>
+
+    <div class="controls">
+      <button id="startBtn" class="btn primary">Start camera</button>
+      <button id="stopBtn" class="btn secondary" disabled>Stop camera</button>
+    </div>
+
+    <section class="status" aria-live="polite">
+      <div class="status-label">Detected SKU</div>
+      <div id="skuDisplay" class="sku">---------</div>
+      <div id="statusText" class="hint">Waiting to scan.</div>
+      <div id="debug" class="debug"></div>
+    </section>
+
+    <section class="manual">
+      <h2>Manual fallback</h2>
+      <div class="manual-row">
+        <input id="manualSku" inputmode="numeric" pattern="[0-9]*" maxlength="9" autocomplete="off" placeholder="Enter 9-digit SKU" aria-label="9-digit SKU">
+        <button id="manualBtn" class="btn primary">Search Kay</button>
+      </div>
+    </section>
+
+    <section class="history">
+      <div class="history-head">
+        <h2>Recent scans</h2>
+        <button id="clearHistory" class="linkbtn">Clear</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <canvas id="canvas"></canvas>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    // Clean up the older multi-file PWA build if this repository served it before.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => registrations.forEach(reg => reg.unregister()))
+        .catch(() => {});
+    }
+    if ("caches" in window) {
+      caches.delete("kay-sku-scanner-v1").catch(() => {});
+    }
+
+    const KAY_SEARCH = sku => `https://www.kay.com/search?text=${encodeURIComponent(sku)}`;
+    const HISTORY_KEY = "kaySkuScannerHistoryV2";
+    const OCR_INTERVAL_MS = 1100;
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const cameraMessage = document.getElementById("cameraMessage");
+    const skuDisplay = document.getElementById("skuDisplay");
+    const statusText = document.getElementById("statusText");
+    const manualSku = document.getElementById("manualSku");
+    const manualBtn = document.getElementById("manualBtn");
+    const historyList = document.getElementById("historyList");
+    const clearHistory = document.getElementById("clearHistory");
+
+    let stream = null;
+    let worker = null;
+    let scanning = false;
+    let busy = false;
+    let loopTimer = null;
+    let lastCandidate = "";
+    let candidateCount = 0;
+
+    function setStatus(sku, text) {
+      skuDisplay.textContent = sku || "---------";
+      statusText.textContent = text;
+    }
+
+    function extractSku(text) {
+      if (!text) return null;
+      const lines = text
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      // First prefer lines that explicitly look like SKU / item labels.
+      const ranked = [
+        ...lines.filter(line => /\b(sku|item|item\s*#|style|product)\b/i.test(line)),
+        ...lines.filter(line => !/\b(sku|item|item\s*#|style|product)\b/i.test(line))
+      ];
+
+      for (const line of ranked) {
+        // Direct 9 consecutive digits.
+        const direct = line.match(/(?:^|\D)(\d{9})(?!\d)/);
+        if (direct) return direct[1];
+
+        // OCR often inserts spaces/dashes between groups: 418 488 906.
+        const groups = line.match(/\d[\d\s\-–—.]{7,}\d/g) || [];
+        for (const group of groups) {
+          const digits = group.replace(/\D/g, "");
+          if (digits.length === 9) return digits;
+        }
+      }
+
+      // Conservative whole-block fallback.
+      const whole = text.match(/(?:^|\D)(\d{9})(?!\d)/);
+      return whole ? whole[1] : null;
+    }
+
+    async function ensureWorker() {
+      if (worker) return worker;
+      if (!window.Tesseract) throw new Error("OCR library did not load. Check your internet connection.");
+
+      setStatus("", "Loading OCR engine…");
+      worker = await Tesseract.createWorker("eng", 1, {
+        logger: msg => {
+          if (msg && msg.status === "recognizing text" && typeof msg.progress === "number") {
+            statusText.textContent = `Reading number… ${Math.round(msg.progress * 100)}%`;
+          }
+        }
+      });
+
+      await worker.setParameters({
+        tessedit_char_whitelist: "0123456789SKUITEM#skuitem- ",
+        preserve_interword_spaces: "1"
+      });
+
+      return worker;
+    }
+
+    function cropScanRegion() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return false;
+
+      // Match the visual target: center 84% width x 32% height.
+      const cropW = Math.round(vw * 0.84);
+      const cropH = Math.round(vh * 0.32);
+      const sx = Math.round((vw - cropW) / 2);
+      const sy = Math.round((vh - cropH) / 2);
+
+      // Upscale for small receipt/ticket print.
+      const scale = cropW < 1400 ? Math.min(2.2, 1400 / cropW) : 1;
+      canvas.width = Math.round(cropW * scale);
+      canvas.height = Math.round(cropH * scale);
+
+      ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+
+      // Grayscale + stronger contrast improves black receipt text.
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        gray = (gray - 128) * 1.65 + 128;
+        gray = Math.max(0, Math.min(255, gray));
+        d[i] = d[i + 1] = d[i + 2] = gray;
+      }
+      ctx.putImageData(img, 0, 0);
+      return true;
+    }
+
+    async function scanOnce() {
+      if (!scanning || busy || document.hidden) return;
+      if (!cropScanRegion()) return;
+
+      busy = true;
+      try {
+        const w = await ensureWorker();
+        const result = await w.recognize(canvas);
+        const text = result?.data?.text || "";
+        const sku = extractSku(text);
+
+        if (sku) {
+          if (sku === lastCandidate) candidateCount += 1;
+          else {
+            lastCandidate = sku;
+            candidateCount = 1;
+          }
+
+          setStatus(sku, candidateCount >= 2
+            ? "Confirmed. Opening Kay…"
+            : "SKU seen once — hold steady to confirm.");
+
+          if (candidateCount >= 2) {
+            scanning = false;
+            saveHistory(sku);
+            stopCameraTracks();
+            setTimeout(() => { window.location.href = KAY_SEARCH(sku); }, 250);
+            return;
+          }
+        } else {
+          lastCandidate = "";
+          candidateCount = 0;
+          setStatus("", "No 9-digit SKU found yet. Move closer and keep the number centered.");
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus("", err?.message || "Could not read the image.");
+      } finally {
+        busy = false;
+      }
+    }
+
+    function scheduleLoop() {
+      clearInterval(loopTimer);
+      loopTimer = setInterval(scanOnce, OCR_INTERVAL_MS);
+    }
+
+    async function startCamera() {
+      if (!window.isSecureContext) {
+        setStatus("", "Camera access requires HTTPS. Open the GitHub Pages https:// address, not a downloaded file.");
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setStatus("", "This browser does not expose camera access. Try current Chrome or Safari.");
+        return;
+      }
+
+      startBtn.disabled = true;
+      setStatus("", "Requesting rear camera…");
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        scanning = true;
+        lastCandidate = "";
+        candidateCount = 0;
+        cameraMessage.innerHTML = "Keep the <strong>9-digit SKU</strong> inside the box and hold steady.";
+        stopBtn.disabled = false;
+
+        await ensureWorker();
+        setStatus("", "Camera ready. Looking for a 9-digit SKU…");
+        scheduleLoop();
+        scanOnce();
+      } catch (err) {
+        console.error(err);
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        const name = err?.name || "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setStatus("", "Camera permission was denied. Allow camera access for this site in your browser settings, then try again.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("", "No camera was found on this device.");
+        } else {
+          setStatus("", `Camera could not start${err?.message ? ": " + err.message : "."}`);
+        }
+      }
+    }
+
+    function stopCameraTracks() {
+      clearInterval(loopTimer);
+      loopTimer = null;
+      scanning = false;
+      busy = false;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    function stopCamera() {
+      stopCameraTracks();
+      cameraMessage.textContent = "Camera stopped.";
+      setStatus("", "Waiting to scan.");
+    }
+
+    function normalizeManual() {
+      manualSku.value = manualSku.value.replace(/\D/g, "").slice(0, 9);
+    }
+
+    function openManualSku() {
+      normalizeManual();
+      const sku = manualSku.value;
+      if (!/^\d{9}$/.test(sku)) {
+        setStatus(sku, "Enter exactly 9 digits.");
+        manualSku.focus();
+        return;
+      }
+      saveHistory(sku);
+      setStatus(sku, "Opening Kay…");
+      window.location.href = KAY_SEARCH(sku);
+    }
+
+    function getHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(sku) {
+      const history = getHistory().filter(x => x && x.sku !== sku);
+      history.unshift({ sku, time: Date.now() });
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 12)));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      historyList.innerHTML = "";
+      if (!history.length) {
+        historyList.innerHTML = '<div class="empty">No scans yet.</div>';
+        return;
+      }
+
+      history.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "history-item";
+
+        const meta = document.createElement("div");
+        const skuEl = document.createElement("div");
+        skuEl.className = "history-sku";
+        skuEl.textContent = item.sku;
+        const timeEl = document.createElement("div");
+        timeEl.className = "history-time";
+        timeEl.textContent = new Date(item.time).toLocaleString();
+        meta.append(skuEl, timeEl);
+
+        const open = document.createElement("button");
+        open.className = "btn secondary";
+        open.textContent = "Open";
+        open.addEventListener("click", () => { window.location.href = KAY_SEARCH(item.sku); });
+
+        row.append(meta, open);
+        historyList.append(row);
+      });
+    }
+
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
+    manualSku.addEventListener("input", normalizeManual);
+    manualSku.addEventListener("keydown", e => {
+      if (e.key === "Enter") openManualSku();
+    });
+    manualBtn.addEventListener("click", openManualSku);
+    clearHistory.addEventListener("click", () => {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    });
+
+    window.addEventListener("pagehide", stopCameraTracks);
+    renderHistory();
+  })();
+  </script>
+</body>
+</html>
