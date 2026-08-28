@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0d0f" />
+  <title>Jewelry SKU Scanner — v5 Fast Scan</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f7f7f7;
+      background: #0d0d0f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0d0d0f;
+      color: #f7f7f7;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app {
+      width: min(100%, 720px);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    }
+    h1 {
+      font-size: clamp(25px, 7vw, 38px);
+      line-height: 1;
+      margin: 0;
+      letter-spacing: -0.04em;
+    }
+    .sub {
+      color: #b8b8be;
+      margin: 8px 0 16px;
+      line-height: 1.45;
+    }
+
+    .retailer-section {
+      margin-bottom: 14px;
+      padding: 13px;
+      border-radius: 16px;
+      border: 1px solid #2a2a30;
+      background: #151518;
+    }
+    .retailer-label {
+      color: #a7a7ae;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-weight: 800;
+      margin-bottom: 9px;
+    }
+    .retailer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .retailer-btn {
+      min-width: 0;
+      border: 1px solid #393940;
+      border-radius: 13px;
+      padding: 11px 8px;
+      background: #222227;
+      color: #f3f3f5;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+    .retailer-btn small {
+      display: block;
+      margin-top: 4px;
+      color: #9999a2;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .retailer-btn.active {
+      background: #fff;
+      color: #111;
+      border-color: #fff;
+    }
+    .retailer-btn.active small { color: #555; }
+
+    .camera-shell {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      background: #17171a;
+      min-height: 330px;
+      border: 1px solid #2a2a30;
+    }
+    video {
+      width: 100%;
+      height: min(61vh, 520px);
+      min-height: 330px;
+      display: block;
+      object-fit: cover;
+      background: #17171a;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .target {
+      width: min(88%, 540px);
+      height: clamp(62px, 8.5vh, 82px);
+      border: 3px solid #fff;
+      border-radius: 12px;
+      position: relative;
+      box-shadow:
+        0 0 0 9999px rgba(0,0,0,.56),
+        0 0 0 1px rgba(0,0,0,.45),
+        0 0 24px rgba(255,255,255,.18);
+    }
+    .target::before {
+      content: "9 digits only";
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow: 0 1px 3px #000;
+    }
+    .camera-message {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.74);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-weight: 750;
+      min-height: 50px;
+    }
+    .btn.primary { background: #fff; color: #111; }
+    .btn.secondary { background: #26262b; color: #fff; border: 1px solid #3a3a41; }
+    .btn:disabled { opacity: .45; cursor: default; }
+
+    .status {
+      margin-top: 14px;
+      border-radius: 16px;
+      padding: 15px;
+      background: #17171a;
+      border: 1px solid #2a2a30;
+    }
+    .status-label {
+      color: #a7a7ae;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-weight: 800;
+    }
+    .sku {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(30px, 10vw, 48px);
+      letter-spacing: .07em;
+      margin: 6px 0 4px;
+      font-weight: 850;
+      word-break: break-all;
+    }
+    .hint { color: #b8b8be; font-size: 14px; line-height: 1.45; }
+
+    .manual {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid #2a2a30;
+      border-radius: 16px;
+      background: #131315;
+    }
+    .manual h2, .history h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+    }
+    .manual-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+    input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #3a3a41;
+      background: #0b0b0d;
+      color: #fff;
+      padding: 13px 14px;
+      font-size: 20px;
+      letter-spacing: .05em;
+      outline: none;
+    }
+    input:focus { border-color: #9b9ba4; }
+
+    .history { margin-top: 18px; }
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .linkbtn {
+      color: #c5c5cc;
+      background: transparent;
+      border: 0;
+      text-decoration: underline;
+      padding: 6px 0;
+    }
+    .history-list { display: grid; gap: 8px; }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid #29292f;
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #141417;
+    }
+    .history-sku { font-weight: 800; letter-spacing: .05em; }
+    .history-meta { color: #92929a; font-size: 12px; margin-top: 2px; }
+    .empty { color: #8f8f97; padding: 10px 0; }
+    canvas { display: none; }
+
+    @media (max-width: 520px) {
+      .retailer-btn { font-size: 13px; padding-inline: 5px; }
+    }
+    @media (max-width: 460px) {
+      .controls { grid-template-columns: 1fr; }
+      .manual-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Jewelry SKU Scanner</h1>
+    <p class="sub">Choose the retailer, then center a single printed <strong>9-digit SKU / Item #</strong> inside the narrow scan box.</p>
+
+    <section class="retailer-section">
+      <div class="retailer-label">Search retailer</div>
+      <div class="retailer-grid" role="radiogroup" aria-label="Retailer">
+        <button class="retailer-btn active" data-retailer="kay" role="radio" aria-checked="true">
+          KAY
+          <small>kay.com</small>
+        </button>
+        <button class="retailer-btn" data-retailer="jared" role="radio" aria-checked="false">
+          Jared
+          <small>jared.com</small>
+        </button>
+        <button class="retailer-btn" data-retailer="zales" role="radio" aria-checked="false">
+          Zales
+          <small>zales.com</small>
+        </button>
+      </div>
+    </section>
+
+    <section class="camera-shell">
+      <video id="video" playsinline muted></video>
+      <div class="overlay"><div id="target" class="target"></div></div>
+      <div id="cameraMessage" class="camera-message">Tap <strong>Start camera</strong> to begin.</div>
+    </section>
+
+    <div class="controls">
+      <button id="startBtn" class="btn primary">Start camera</button>
+      <button id="stopBtn" class="btn secondary" disabled>Stop camera</button>
+    </div>
+
+    <section class="status" aria-live="polite">
+      <div id="statusLabel" class="status-label">KAY detected SKU</div>
+      <div id="skuDisplay" class="sku">---------</div>
+      <div id="statusText" class="hint">Preparing OCR engine…</div>
+    </section>
+
+    <section class="manual">
+      <h2>Manual fallback</h2>
+      <div class="manual-row">
+        <input id="manualSku" inputmode="numeric" pattern="[0-9]*" maxlength="9" autocomplete="off" placeholder="Enter exactly 9 digits" aria-label="9-digit SKU">
+        <button id="manualBtn" class="btn primary">Search KAY</button>
+      </div>
+    </section>
+
+    <section class="history">
+      <div class="history-head">
+        <h2>Recent scans</h2>
+        <button id="clearHistory" class="linkbtn">Clear</button>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <canvas id="canvas"></canvas>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    // Remove the old PWA worker/cache if an earlier version of this repo installed it.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => registrations.forEach(reg => reg.unregister()))
+        .catch(() => {});
+    }
+    if ("caches" in window) {
+      caches.delete("kay-sku-scanner-v1").catch(() => {});
+    }
+
+    const RETAILERS = {
+      kay: {
+        name: "KAY",
+        fullName: "KAY Jewelers",
+        domain: "kay.com",
+        searchUrl: sku => `https://www.kay.com/search?text=${encodeURIComponent(sku)}`
+      },
+      jared: {
+        name: "Jared",
+        fullName: "Jared",
+        domain: "jared.com",
+        searchUrl: sku => `https://www.jared.com/search?text=${encodeURIComponent(sku)}`
+      },
+      zales: {
+        name: "Zales",
+        fullName: "Zales",
+        domain: "zales.com",
+        searchUrl: sku => `https://www.zales.com/search?text=${encodeURIComponent(sku)}`
+      }
+    };
+
+    const HISTORY_KEY = "jewelrySkuScannerHistoryV2";
+    const RETAILER_KEY = "jewelrySkuScannerRetailerV2";
+    const NORMAL_RESCAN_DELAY = 140;
+    const CANDIDATE_RESCAN_DELAY = 55;
+    const HIGH_CONFIDENCE = 82;
+
+    const video = document.getElementById("video");
+    const target = document.getElementById("target");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const cameraMessage = document.getElementById("cameraMessage");
+    const skuDisplay = document.getElementById("skuDisplay");
+    const statusLabel = document.getElementById("statusLabel");
+    const statusText = document.getElementById("statusText");
+    const manualSku = document.getElementById("manualSku");
+    const manualBtn = document.getElementById("manualBtn");
+    const historyList = document.getElementById("historyList");
+    const clearHistory = document.getElementById("clearHistory");
+    const retailerButtons = [...document.querySelectorAll(".retailer-btn")];
+
+    let selectedRetailer = localStorage.getItem(RETAILER_KEY);
+    if (!RETAILERS[selectedRetailer]) selectedRetailer = "kay";
+
+    let stream = null;
+    let worker = null;
+    let workerPromise = null;
+    let scanning = false;
+    let busy = false;
+    let scanTimer = null;
+    let lastCandidate = "";
+    let candidateCount = 0;
+
+    function retailer() {
+      return RETAILERS[selectedRetailer];
+    }
+
+    function setStatus(sku, text) {
+      skuDisplay.textContent = sku || "---------";
+      statusText.textContent = text;
+    }
+
+    function updateRetailerUi() {
+      const r = retailer();
+      retailerButtons.forEach(btn => {
+        const active = btn.dataset.retailer === selectedRetailer;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-checked", active ? "true" : "false");
+      });
+      statusLabel.textContent = `${r.name} detected SKU`;
+      manualBtn.textContent = `Search ${r.name}`;
+      cameraMessage.innerHTML = scanning
+        ? `Scanning one line for a <strong>9-digit SKU</strong> → ${r.domain}`
+        : `Selected: <strong>${r.fullName}</strong> (${r.domain})`;
+    }
+
+    function chooseRetailer(key) {
+      if (!RETAILERS[key]) return;
+      selectedRetailer = key;
+      localStorage.setItem(RETAILER_KEY, key);
+      lastCandidate = "";
+      candidateCount = 0;
+      updateRetailerUi();
+      if (scanning) setStatus("", `Looking for a 9-digit SKU for ${retailer().name}…`);
+    }
+
+    /*
+      Strict scanner rules:
+      - Any line containing "$" is rejected as pricing.
+      - After removing spacing/punctuation, there must be exactly 9 digits.
+      - No 8-digit, 10-digit, phone, order, date, or other lengths are accepted.
+      The camera window is only one text-line tall, so the OCR block should
+      contain only the number the user intentionally centers.
+    */
+    function extractSku(text) {
+      if (!text) return null;
+
+      const lines = text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+
+      for (const line of lines) {
+        if (line.includes("$")) continue;
+
+        const digits = line.replace(/\D/g, "");
+        if (digits.length !== 9) continue;
+
+        // Require the line to contain no additional digit run outside those 9.
+        if (!/^\D*\d(?:[\s.,\-–—]*\d){8}\D*$/.test(line)) continue;
+
+        return digits;
+      }
+
+      // Single-line OCR sometimes omits line breaks entirely.
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.includes("$")) return null;
+      const digits = trimmed.replace(/\D/g, "");
+      return digits.length === 9 ? digits : null;
+    }
+
+    async function ensureWorker() {
+      if (worker) return worker;
+      if (workerPromise) return workerPromise;
+
+      workerPromise = (async () => {
+        if (!window.Tesseract) {
+          throw new Error("OCR library did not load. Check the internet connection and reload.");
+        }
+
+        const w = await Tesseract.createWorker("eng", 1, {
+          logger: msg => {
+            if (!scanning && msg?.status === "recognizing text") return;
+            if (msg?.status === "recognizing text" && typeof msg.progress === "number") {
+              statusText.textContent = `Reading SKU… ${Math.round(msg.progress * 100)}%`;
+            }
+          }
+        });
+
+        await w.setParameters({
+          // Keep "$" visible so price lines can be rejected.
+          tessedit_char_whitelist: "0123456789$ .,-",
+          // PSM 7 = treat the target as one text line.
+          tessedit_pageseg_mode: "7",
+          preserve_interword_spaces: "1",
+          user_defined_dpi: "300"
+        });
+
+        worker = w;
+        return worker;
+      })();
+
+      try {
+        return await workerPromise;
+      } finally {
+        workerPromise = null;
+      }
+    }
+
+    function getSourceCropFromTarget() {
+      const sourceW = video.videoWidth;
+      const sourceH = video.videoHeight;
+      if (!sourceW || !sourceH) return null;
+
+      const vr = video.getBoundingClientRect();
+      const tr = target.getBoundingClientRect();
+
+      // video uses object-fit: cover. Map the visible target rectangle back
+      // to the actual camera frame, accounting for cover-cropping.
+      const scale = Math.max(vr.width / sourceW, vr.height / sourceH);
+      const renderedW = sourceW * scale;
+      const renderedH = sourceH * scale;
+      const cropOffsetX = (renderedW - vr.width) / 2;
+      const cropOffsetY = (renderedH - vr.height) / 2;
+
+      const targetX = tr.left - vr.left;
+      const targetY = tr.top - vr.top;
+
+      let sx = (targetX + cropOffsetX) / scale;
+      let sy = (targetY + cropOffsetY) / scale;
+      let sw = tr.width / scale;
+      let sh = tr.height / scale;
+
+      sx = Math.max(0, sx);
+      sy = Math.max(0, sy);
+      sw = Math.min(sourceW - sx, sw);
+      sh = Math.min(sourceH - sy, sh);
+
+      if (sw <= 0 || sh <= 0) return null;
+      return { sx, sy, sw, sh };
+    }
+
+    function cropScanRegion() {
+      const crop = getSourceCropFromTarget();
+      if (!crop) return false;
+
+      // Smaller OCR frame for faster recognition; camera behavior is unchanged.
+      const desiredWidth = Math.min(900, Math.max(720, crop.sw * 1.05));
+      const scale = desiredWidth / crop.sw;
+
+      canvas.width = Math.round(crop.sw * scale);
+      canvas.height = Math.round(crop.sh * scale);
+
+      ctx.drawImage(
+        video,
+        crop.sx, crop.sy, crop.sw, crop.sh,
+        0, 0, canvas.width, canvas.height
+      );
+
+      // Grayscale + moderate contrast. Avoid hard thresholding because
+      // glossy jewelry tickets vary significantly in lighting/reflection.
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        gray = (gray - 128) * 1.72 + 128;
+        gray = Math.max(0, Math.min(255, gray));
+        d[i] = d[i + 1] = d[i + 2] = gray;
+      }
+      ctx.putImageData(img, 0, 0);
+      return true;
+    }
+
+    function scheduleNextScan(delay = NORMAL_RESCAN_DELAY) {
+      clearTimeout(scanTimer);
+      if (!scanning) return;
+      scanTimer = setTimeout(scanOnce, delay);
+    }
+
+    async function scanOnce() {
+      if (!scanning || busy || document.hidden) return;
+      if (!cropScanRegion()) return;
+
+      busy = true;
+      try {
+        const w = await ensureWorker();
+        const result = await w.recognize(canvas);
+        const text = result?.data?.text || "";
+        const sku = extractSku(text);
+
+        // SPEED CHANGE ONLY:
+        // The first valid isolated 9-digit SKU opens immediately.
+        // No confidence gate and no second matching OCR pass.
+        if (sku) {
+          scanning = false;
+          saveHistory(sku, selectedRetailer);
+          setStatus(sku, `Found. Opening ${retailer().domain}…`);
+          stopCameraTracks();
+          window.location.href = retailer().searchUrl(sku);
+          return;
+        }
+
+        setStatus("", "Center one 9-digit SKU in the box.");
+      } catch (err) {
+        console.error(err);
+        setStatus("", err?.message || "Could not read the number.");
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function startCamera() {
+      if (!window.isSecureContext) {
+        setStatus("", "Camera access requires HTTPS. Open the GitHub Pages https:// address.");
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setStatus("", "This browser does not expose camera access. Try current Chrome or Safari.");
+        return;
+      }
+
+      startBtn.disabled = true;
+      setStatus("", `Requesting rear camera for ${retailer().name}…`);
+
+      try {
+        // OCR should usually already be preloaded, but start it in parallel
+        // with the permission/camera request if it is not.
+        const ocrReady = ensureWorker();
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        });
+
+        video.srcObject = stream;
+        await video.play();
+        await ocrReady;
+
+        scanning = true;
+        lastCandidate = "";
+        candidateCount = 0;
+        stopBtn.disabled = false;
+        updateRetailerUi();
+        setStatus("", `Camera ready. Scan one 9-digit line for ${retailer().name}.`);
+        scheduleNextScan(20);
+      } catch (err) {
+        console.error(err);
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        const name = err?.name || "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setStatus("", "Camera permission was denied. Allow camera access for this site, then try again.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("", "No camera was found on this device.");
+        } else {
+          setStatus("", `Camera could not start${err?.message ? ": " + err.message : "."}`);
+        }
+      }
+    }
+
+    function stopCameraTracks() {
+      clearTimeout(scanTimer);
+      scanTimer = null;
+      scanning = false;
+      busy = false;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    function stopCamera() {
+      stopCameraTracks();
+      updateRetailerUi();
+      setStatus("", "Waiting to scan.");
+    }
+
+    function normalizeManual() {
+      manualSku.value = manualSku.value.replace(/\D/g, "").slice(0, 9);
+    }
+
+    function openSku(sku, retailerKey) {
+      const r = RETAILERS[retailerKey] || retailer();
+      window.location.href = r.searchUrl(sku);
+    }
+
+    function openManualSku() {
+      normalizeManual();
+      const sku = manualSku.value;
+      if (!/^\d{9}$/.test(sku)) {
+        setStatus(sku, "Enter exactly 9 digits.");
+        manualSku.focus();
+        return;
+      }
+      saveHistory(sku, selectedRetailer);
+      setStatus(sku, `Opening ${retailer().domain}…`);
+      openSku(sku, selectedRetailer);
+    }
+
+    function getHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(sku, retailerKey) {
+      const history = getHistory().filter(
+        item => item && !(item.sku === sku && item.retailer === retailerKey)
+      );
+      history.unshift({ sku, retailer: retailerKey, time: Date.now() });
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 15)));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      historyList.innerHTML = "";
+
+      if (!history.length) {
+        historyList.innerHTML = '<div class="empty">No scans yet.</div>';
+        return;
+      }
+
+      history.forEach(item => {
+        const key = RETAILERS[item.retailer] ? item.retailer : "kay";
+        const r = RETAILERS[key];
+
+        const row = document.createElement("div");
+        row.className = "history-item";
+
+        const meta = document.createElement("div");
+
+        const skuEl = document.createElement("div");
+        skuEl.className = "history-sku";
+        skuEl.textContent = item.sku;
+
+        const infoEl = document.createElement("div");
+        infoEl.className = "history-meta";
+        infoEl.textContent = `${r.name} • ${new Date(item.time).toLocaleString()}`;
+
+        meta.append(skuEl, infoEl);
+
+        const open = document.createElement("button");
+        open.className = "btn secondary";
+        open.textContent = `Open ${r.name}`;
+        open.addEventListener("click", () => openSku(item.sku, key));
+
+        row.append(meta, open);
+        historyList.append(row);
+      });
+    }
+
+    retailerButtons.forEach(btn => {
+      btn.addEventListener("click", () => chooseRetailer(btn.dataset.retailer));
+    });
+
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
+    manualSku.addEventListener("input", normalizeManual);
+    manualSku.addEventListener("keydown", e => {
+      if (e.key === "Enter") openManualSku();
+    });
+    manualBtn.addEventListener("click", openManualSku);
+    clearHistory.addEventListener("click", () => {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && scanning && !busy) scheduleNextScan(20);
+    });
+
+    window.addEventListener("pagehide", stopCameraTracks);
+
+    updateRetailerUi();
+    renderHistory();
+
+    // Preload OCR immediately so the first actual scan begins faster.
+    const warmOcr = () => {
+      ensureWorker()
+        .then(() => {
+          if (!scanning) setStatus("", `OCR ready. Select a retailer and start the camera.`);
+        })
+        .catch(err => {
+          console.error(err);
+          if (!scanning) setStatus("", "OCR could not preload. Reload with an internet connection.");
+        });
+    };
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(warmOcr, { timeout: 900 });
+    } else {
+      setTimeout(warmOcr, 150);
+    }
+  })();
+  </script>
+</body>
+</html>
